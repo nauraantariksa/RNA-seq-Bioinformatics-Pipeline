@@ -1,0 +1,26 @@
+#PBS -l walltime=04:00:00
+#PBS -l select=1:ncpus=8:mem=32gb
+
+module load Subread/2.1.1-GCC-13.3.0
+
+EPHEMERAL_DIR=/PATH/TO/EPHEMERAL
+mkdir -p $EPHEMERAL_DIR
+
+OUTPUT_FILE=$EPHEMERAL_DIR/fc_CS1AN_WTvCSB.txt
+GTF=/rds/general/project/diantonio/live/tools/genomes/hg38_ucsc/hg38.refGene.gtf
+
+BAMS=$(find $PBS_O_WORKDIR -name "*.sorted.out.bam")
+
+featureCounts -T 8 -p --countReadPairs -s 0 -a $GTF -o $EPHEMERAL_DIR/temp_feature_counts.txt $BAMS
+
+awk 'BEGIN{OFS="\t"} NR==1 {for(i=7;i<=NF;i++) sample[i]=$i} NR>2 {printf $1; for(i=7;i<=NF;i++) printf "\t"$(i); print ""}' $EPHEMERAL_DIR/temp_feature_counts.txt > $OUTPUT_FILE
+
+HEADER="GeneID"
+for bam in $BAMS; do
+    BASENAME=$(basename $bam .sorted.out.bam)
+    HEADER="$HEADER\t$BASENAME"
+done
+sed -i "1s/.*/$HEADER/" $OUTPUT_FILE
+
+# copy final result back to live project space
+cp $OUTPUT_FILE $PBS_O_WORKDIR/
