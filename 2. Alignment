@@ -1,0 +1,19 @@
+#Alignment utilizes STAR tool; the tool use depends on the length of the sequencing read. Below example is for 150 bp read
+
+#PBS -lwalltime=72:00:00
+#PBS -lselect=1:ncpus=128:mem=900gb
+
+module load STAR/2.7.10b-GCC-11.3.0
+
+TRIM_DIR=/PATH/TO/TRIMMED/FILES
+GENOME_DIR=/rds/general/user/nfa23/projects/diantonio/live/tools/star149b
+OUT_DIR=$PBS_O_WORKDIR
+
+for r1 in $TRIM_DIR/trimmed_*_R1.fq.gz
+do
+name=$(basename $r1 _R1.fq.gz)
+name=${name#trimmed_}
+mkdir -p $OUT_DIR/$name
+STAR --runThreadN 128 --genomeDir $GENOME_DIR --outFileNamePrefix $OUT_DIR/$name/ --readFilesCommand "gunzip -c" --readFilesIn $TRIM_DIR/trimmed_${name}_R1.fq.gz $TRIM_DIR/trimmed_${name}_R2.fq.gz --outSAMtype BAM SortedByCoordinate
+mv $OUT_DIR/$name/Aligned.sortedByCoord.out.bam $OUT_DIR/$name/${name}.sorted.out.bam
+done
